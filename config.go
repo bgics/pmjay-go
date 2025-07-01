@@ -23,6 +23,9 @@ const (
 	A4Height = 297
 
 	FieldPrintYOffset = 1
+
+	NumDaysCharLimit = 4
+	TextInputWidth   = 60
 )
 
 var FieldConfig = map[FieldName]struct {
