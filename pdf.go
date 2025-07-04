@@ -2,123 +2,137 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/phpdave11/gofpdf"
 )
 
-type TextLine struct {
-	Text string
-	X    float64
-	Y    float64
+type formData struct {
+	name            string
+	date            time.Time
+	address         string
+	dateOfBirth     time.Time
+	dateOfAdmission time.Time
+	diagnosis       string
 }
 
-func GeneratePDF(outFileStr string, formData FormData, numDays int) error {
-	pdf := gofpdf.New(gofpdf.OrientationPortrait, gofpdf.UnitMillimeter, gofpdf.PageSizeA4, FontDirStr)
+type textLine struct {
+	text string
+	x    float64
+	y    float64
+}
 
-	pdf.AddFont(FontConfig.FamilyStr, FontConfig.StyleStr, FontConfig.FileStr)
-	pdf.SetFont(FontConfig.FamilyStr, FontConfig.StyleStr, FontConfig.Size)
+func printPDF(filename string) {
+	exec.Command("PDFtoPrinter.exe", filename)
+}
+
+func generatePDF(outFileStr string, fd formData, numDays int) error {
+	pdf := gofpdf.New(gofpdf.OrientationPortrait, gofpdf.UnitMillimeter, gofpdf.PageSizeA4, fontDirStr)
+
+	pdf.AddFont(fontConfig.familyStr, fontConfig.styleStr, fontConfig.fileStr)
+	pdf.SetFont(fontConfig.familyStr, fontConfig.styleStr, fontConfig.size)
 
 	for range numDays {
 		pdf.AddPage()
-		pdf.Image(TemplateFileStr, 0, 0, A4Width, A4Height, false, "", 0, "")
+		pdf.Image(templateFileStr, 0, 0, a4Width, a4Height, false, "", 0, "")
 
-		textLines, err := convertToTextLines(formData)
+		textLines, err := convertToTextLines(fd)
 		if err != nil {
 			return err
 		}
 
 		for _, line := range textLines {
-			pdf.Text(line.X, line.Y-FieldPrintYOffset, line.Text)
+			pdf.Text(line.x, line.y-fieldPrintYOffset, line.text)
 		}
 
-		formData.Date = formData.Date.Add(24 * time.Hour)
+		fd.date = fd.date.AddDate(0, 0, 1)
 	}
 
 	return pdf.OutputFileAndClose(outFileStr)
 }
 
-func convertToTextLines(formData FormData) ([]TextLine, error) {
-	if !formData.Date.After(formData.DateOfAdmission) {
+func convertToTextLines(fd formData) ([]textLine, error) {
+	if fd.date.Compare(fd.dateOfAdmission) < 0 {
 		return nil, fmt.Errorf("date is before date of admission")
 	}
 
-	if !formData.Date.After(formData.DateOfBirth) {
+	if fd.date.Compare(fd.dateOfBirth) < 0 {
 		return nil, fmt.Errorf("date is before date of birth")
 	}
 
-	if !formData.DateOfAdmission.After(formData.DateOfBirth) {
+	if fd.dateOfAdmission.Compare(fd.dateOfBirth) < 0 {
 		return nil, fmt.Errorf("date of admission is before date of birth")
 	}
 
-	var output []TextLine
+	var output []textLine
 
-	output = append(output, makeTextFieldTextLine(formData.Name, NAME))
-	output = append(output, makeTextFieldTextLine(formData.Diagnosis, DIAGNOSIS))
-	output = append(output, makeAddressTextLines(formData.Address)...)
-	output = append(output, makeDateTextLine(formData.Date, DATE))
-	output = append(output, makeDateTextLine(formData.DateOfBirth, DATE_OF_BIRTH))
-	output = append(output, makeDateTextLine(formData.DateOfAdmission, DATE_OF_ADMISSION))
-	output = append(output, makeDayOfAdmissionTextLine(formData.Date, formData.DateOfAdmission))
-	output = append(output, makeAgeTextLine(formData.Date, formData.DateOfBirth))
+	output = append(output, makeTextFieldTextLine(fd.name, NAME))
+	output = append(output, makeTextFieldTextLine(fd.diagnosis, DIAGNOSIS))
+	output = append(output, makeAddressTextLines(fd.address)...)
+	output = append(output, makeDateTextLine(fd.date, DATE))
+	output = append(output, makeDateTextLine(fd.dateOfBirth, DATE_OF_BIRTH))
+	output = append(output, makeDateTextLine(fd.dateOfAdmission, DATE_OF_ADMISSION))
+	output = append(output, makeDayOfAdmissionTextLine(fd.date, fd.dateOfAdmission))
+	output = append(output, makeAgeTextLine(fd.date, fd.dateOfBirth))
 
 	return output, nil
 }
 
-func makeTextFieldTextLine(fieldString string, cfgKey FieldName) TextLine {
-	cfg := FieldConfig[cfgKey]
+func makeTextFieldTextLine(fieldString string, cfgKey fieldName) textLine {
+	cfg := fieldConfig[cfgKey]
 
-	return TextLine{
-		Text: trim(fieldString, cfg.MaxChars),
-		X:    cfg.X,
-		Y:    cfg.Y,
+	return textLine{
+		text: trim(fieldString, cfg.maxChars),
+		x:    cfg.x,
+		y:    cfg.y,
 	}
 }
 
-func makeAddressTextLines(address string) []TextLine {
-	var output []TextLine
+func makeAddressTextLines(address string) []textLine {
+	var output []textLine
 
-	cfgKeys := [3]FieldName{ADDRESS1, ADDRESS2, ADDRESS3}
+	cfgKeys := [3]fieldName{ADDRESS1, ADDRESS2, ADDRESS3}
 
 	for i := range 3 {
 		line := makeTextFieldTextLine(address, cfgKeys[i])
 		output = append(output, line)
-		if len(address) <= len(line.Text) {
+		if len(address) <= len(line.text) {
 			return output
 		}
-		address = strings.TrimPrefix(address, line.Text)
+		address = strings.TrimPrefix(address, line.text)
 	}
 
 	return output
 }
 
-func makeDateTextLine(date time.Time, cfgKey FieldName) TextLine {
-	cfg := FieldConfig[cfgKey]
+func makeDateTextLine(date time.Time, cfgKey fieldName) textLine {
+	cfg := fieldConfig[cfgKey]
 
 	dateString := date.Format("02/01/2006")
-	return TextLine{
-		Text: dateString,
-		X:    cfg.X,
-		Y:    cfg.Y,
+	return textLine{
+		text: dateString,
+		x:    cfg.x,
+		y:    cfg.y,
 	}
 }
 
-func makeDayOfAdmissionTextLine(date, dateOfAdmission time.Time) TextLine {
-	cfg := FieldConfig[DAY_OF_ADMISSION]
+func makeDayOfAdmissionTextLine(date, dateOfAdmission time.Time) textLine {
+	cfg := fieldConfig[DAY_OF_ADMISSION]
 
 	numDays := int(date.Sub(dateOfAdmission).Hours()/24) + 1
 	fieldString := fmt.Sprintf("DAY %d", numDays)
 
-	return TextLine{
-		Text: fieldString,
-		X:    cfg.X,
-		Y:    cfg.Y,
+	return textLine{
+		text: fieldString,
+		x:    cfg.x,
+		y:    cfg.y,
 	}
 }
 
-func makeAgeTextLine(date, dateOfBirth time.Time) TextLine {
-	cfg := FieldConfig[AGE]
+func makeAgeTextLine(date, dateOfBirth time.Time) textLine {
+	cfg := fieldConfig[AGE]
 
 	age := int(date.Sub(dateOfBirth).Hours()/24) + 1
 	var suffix string
@@ -129,10 +143,10 @@ func makeAgeTextLine(date, dateOfBirth time.Time) TextLine {
 	}
 	fieldString := fmt.Sprintf("%d %s", age, suffix)
 
-	return TextLine{
-		Text: fieldString,
-		X:    cfg.X,
-		Y:    cfg.Y,
+	return textLine{
+		text: fieldString,
+		x:    cfg.x,
+		y:    cfg.y,
 	}
 }
 
