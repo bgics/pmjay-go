@@ -296,7 +296,8 @@ func (m *formPageModel) validateInput() (formData, error) {
 		diagnosis:       m.diagnosisInput.Value(),
 		date:            m.date,
 		dateOfAdmission: m.dateOfAdmission,
-		dateOfBirth:     m.dateOfBirth,
+
+		dateOfBirth: m.dateOfBirth,
 	}, nil
 }
 
@@ -308,7 +309,7 @@ func (m *formPageModel) generatePrintPDFCmd(fd formData) tea.Cmd {
 		s.storeRecords()
 
 		err := generatePDF("output.pdf", fd, m.numDays)
-		if err != nil {
+		if err == nil {
 			printPDF("output.pdf")
 		}
 

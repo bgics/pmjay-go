@@ -25,7 +25,8 @@ type textLine struct {
 }
 
 func printPDF(filename string) {
-	exec.Command("PDFtoPrinter.exe", filename)
+	cmd := exec.Command(".\\PDFtoPrinter.exe", filename)
+	cmd.Run()
 }
 
 func generatePDF(outFileStr string, fd formData, numDays int) error {
