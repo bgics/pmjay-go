@@ -1,6 +1,6 @@
-package main
+package config
 
-type fieldName int
+type FieldName int
 
 const (
 	NAME = iota
@@ -16,19 +16,22 @@ const (
 )
 
 const (
-	templateFileStr = "./assets/form_template.png"
-	fontDirStr      = "./assets"
+	TemplateFileStr = "./assets/form_template.png"
+	FontDirStr      = "./assets"
 
-	a4Width  = 210
-	a4Height = 297
+	A4WidthMM  = 210
+	A4HeightMM = 297
 
-	fieldPrintYOffset = 0.5
+	FieldYOffset = 0.5
+
+	ExeName    = ".\\PDFtoPrinter.exe"
+	DateFormat = "02/01/2006"
 )
 
-var fieldConfig = map[fieldName]struct {
-	x        float64
-	y        float64
-	maxChars int
+var FieldConfig = map[FieldName]struct {
+	X        float64
+	Y        float64
+	MaxChars int
 }{
 	NAME:              {25.24, 44.53, 41},
 	ADDRESS1:          {30.10, 53.54, 39},
@@ -42,11 +45,11 @@ var fieldConfig = map[fieldName]struct {
 	DIAGNOSIS:         {32.93, 89.58, 70},
 }
 
-var fontConfig = struct {
-	familyStr string
-	styleStr  string
-	fileStr   string
-	size      float64
+var FontConfig = struct {
+	FamilyStr string
+	StyleStr  string
+	FileStr   string
+	Size      float64
 }{
 	"JetBrainsMono",
 	"",
