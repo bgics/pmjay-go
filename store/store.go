@@ -13,8 +13,22 @@ import (
 	"github.com/bgics/pmjay-go/model"
 )
 
+// TODO: there no strict enforcing of the ordering of fields in csv
+// TODO: currently this module assumes that the data is generated only by this program
+// external data could be invalid and cause error
+
 var (
-	CSVHeader = []string{"Name", "Address", "Diagnosis", "Date", "Date of Admission", "Date of Birth"}
+	CSVHeader = []string{"Name", "Address", "Diagnosis", "Gender", "Date", "Date of Admission", "Date of Birth"}
+)
+
+const (
+	nameIndex = iota
+	addressIndex
+	diagnosisIndex
+	genderIndex
+	dateIndex
+	doaIndex
+	dobIndex
 )
 
 type Store struct {
@@ -33,15 +47,15 @@ func (s *Store) AddRecord(fd model.FormData) error {
 		}
 	}
 
-	if len(s.records) >= 10 {
-		s.records = s.records[1:]
-	}
-
 	index := s.getRecordIndex(fd.Name)
 
 	if index != -1 {
 		s.records[index] = fd
 	} else {
+		if len(s.records) >= 10 {
+			s.records = s.records[:9]
+		}
+
 		s.records = append(s.records, fd)
 	}
 	s.sortRecords()
@@ -152,7 +166,7 @@ func sanitizeString(str string) string {
 
 func (s *Store) sortRecords() {
 	slices.SortStableFunc(s.records, func(a, b model.FormData) int {
-		return a.Date.Compare(b.Date)
+		return b.Date.Compare(a.Date)
 	})
 }
 
@@ -163,6 +177,7 @@ func recordsToRows(records []model.FormData) [][]string {
 			record.Name,
 			record.Address,
 			record.Diagnosis,
+			string(record.Gender),
 			record.Date.Format(config.DateFormat),
 			record.DateOfAdmission.Format(config.DateFormat),
 			record.DateOfBirth.Format(config.DateFormat),
@@ -177,25 +192,26 @@ func rowsToRecords(rows [][]string) ([]model.FormData, error) {
 	var output []model.FormData
 
 	for _, row := range rows {
-		date, err := time.Parse(config.DateFormat, row[3])
+		date, err := time.Parse(config.DateFormat, row[dateIndex])
 		if err != nil {
 			return nil, err
 		}
 
-		dateOfAdmission, err := time.Parse(config.DateFormat, row[4])
+		dateOfAdmission, err := time.Parse(config.DateFormat, row[doaIndex])
 		if err != nil {
 			return nil, err
 		}
 
-		dateOfBirth, err := time.Parse(config.DateFormat, row[5])
+		dateOfBirth, err := time.Parse(config.DateFormat, row[dobIndex])
 		if err != nil {
 			return nil, err
 		}
 
 		record := model.FormData{
-			Name:            row[0],
-			Address:         row[1],
-			Diagnosis:       row[2],
+			Name:            row[nameIndex],
+			Address:         row[addressIndex],
+			Diagnosis:       row[diagnosisIndex],
+			Gender:          model.Gender(row[genderIndex]),
 			Date:            date,
 			DateOfAdmission: dateOfAdmission,
 			DateOfBirth:     dateOfBirth,

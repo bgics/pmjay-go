@@ -11,37 +11,38 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	datepicker "github.com/ethanefung/bubble-datepicker"
 )
 
 const (
-	name = iota
-	address
-	diagnosis
-	date
-	doa
-	dob
-	numDays
-	printBtn
-	saveBtn
-)
-
-const (
-	day = iota
-	month
-	year
+	nameIndex = iota
+	addressIndex
+	diagnosisIndex
+	dateIndex
+	doaIndex
+	dobIndex
+	genderIndex
+	numDaysIndex
+	printBtnIndex
+	saveBtnIndex
 )
 
 type FormPageModel struct {
-	nameInput       textinput.Model
-	addressInput    textinput.Model
-	diagnosisInput  textinput.Model
+	nameInput      textinput.Model
+	addressInput   textinput.Model
+	diagnosisInput textinput.Model
+
+	gender model.Gender
+
 	date            time.Time
 	dateOfAdmission time.Time
 	dateOfBirth     time.Time
-	numDays         int
 
-	fieldIndex           int
-	dateInteractionIndex int
+	numDays    int
+	fieldIndex int
+
+	datePicker     datepicker.Model
+	datePickerMode bool
 
 	// TODO: make error a field in shared state and then show error at bottom on each page
 	errMsg      string
@@ -55,9 +56,12 @@ func NewFormPageModel(sharedState *tui.SharedState) *FormPageModel {
 	m.addressInput = makeTextInput(false, config.ADDRESS1, config.ADDRESS2, config.ADDRESS3)
 	m.diagnosisInput = makeTextInput(false, config.DIAGNOSIS)
 
-	m.sharedState = sharedState
-
 	m.numDays = 1
+
+	m.datePicker = makeDateInput()
+	m.datePickerMode = false
+
+	m.sharedState = sharedState
 
 	if m.sharedState.LastPageIndex == tui.SEARCH_PAGE {
 		record := m.sharedState.SelectedRecord
@@ -66,6 +70,7 @@ func NewFormPageModel(sharedState *tui.SharedState) *FormPageModel {
 		m.date = time.Now()
 		m.dateOfAdmission = time.Now()
 		m.dateOfBirth = time.Now()
+		m.gender = model.Male
 	}
 
 	return m
@@ -79,6 +84,8 @@ func (m *FormPageModel) setFormWithRecord(record model.FormData) {
 	m.date = record.Date
 	m.dateOfAdmission = record.DateOfAdmission
 	m.dateOfBirth = record.DateOfBirth
+
+	m.gender = record.Gender
 }
 
 func (m *FormPageModel) Init() tea.Cmd {
@@ -92,18 +99,38 @@ func (m *FormPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			m.sharedState.LastPageIndex = tui.FORM_PAGE
 			return m, tui.ChangePageCmd(tui.START_PAGE)
-		case "tab", "shift+tab":
-			return m.handleFormNav(msg.String())
-		case "up", "down", "left", "right":
-			if date <= m.fieldIndex && m.fieldIndex <= dob {
-				return m.handleDateInput(msg.String())
+		case "tab", "down", "shift+tab", "up":
+			if m.datePickerMode {
+				return m.handleDatePicker(msg)
 			}
 
-			if m.fieldIndex == numDays {
+			return m.handleFormNav(msg.String())
+		case "left", "right":
+			if m.datePickerMode {
+				return m.handleDatePicker(msg)
+			}
+
+			if m.fieldIndex == numDaysIndex {
 				return m.handleNumDaysInput(msg.String())
 			}
 
+			if m.fieldIndex == genderIndex {
+				return m.handleGenderInput()
+			}
+
 			return m, nil
+		case "enter":
+			if dateIndex <= m.fieldIndex && m.fieldIndex <= dobIndex {
+				if m.datePickerMode {
+					m.datePickerMode = false
+					m.blurDatePicker()
+				} else {
+					m.datePickerMode = true
+					m.focusDatePicker()
+				}
+
+				return m, nil
+			}
 		}
 	}
 
@@ -116,21 +143,106 @@ func (m *FormPageModel) View() string {
 	output.WriteString("\n")
 
 	inputFields := m.renderTextInputs()
+
 	dateFields := m.renderDateInputs()
+	genderField := m.renderGenderField()
 	numDaysField := m.renderNumDaysField()
 	formButtons := m.renderButtons()
+
 	errorMsg := m.renderError()
+
+	bottomFields := lipgloss.JoinVertical(
+		lipgloss.Left,
+		dateFields,
+		genderField,
+		numDaysField,
+		formButtons,
+	)
+
+	datePicker := m.renderDatePicker()
+
+	bottomForm := lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		bottomFields,
+		datePicker,
+	)
 
 	output.WriteString(lipgloss.JoinVertical(
 		lipgloss.Left,
 		inputFields,
-		dateFields,
-		numDaysField,
-		formButtons,
+		bottomForm,
 		errorMsg,
 	))
 
 	return output.String()
+}
+
+func (m *FormPageModel) handleGenderInput() (tea.Model, tea.Cmd) {
+	if m.gender == model.Male {
+		m.gender = model.Female
+	} else {
+		m.gender = model.Male
+	}
+
+	return m, nil
+}
+
+func (m *FormPageModel) focusDatePicker() {
+	switch m.fieldIndex {
+	case dateIndex:
+		m.datePicker.SetTime(m.date)
+	case doaIndex:
+		m.datePicker.SetTime(m.dateOfAdmission)
+	case dobIndex:
+		m.datePicker.SetTime(m.dateOfBirth)
+	}
+
+	m.datePicker.SelectDate()
+	m.datePicker.SetFocus(datepicker.FocusCalendar)
+}
+
+func (m *FormPageModel) blurDatePicker() {
+	m.datePicker.UnselectDate()
+	m.datePicker.SetFocus(datepicker.FocusNone)
+}
+
+func (m *FormPageModel) handleDatePicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	prev := m.datePicker.Time
+
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "tab":
+			if m.datePicker.Focused == datepicker.FocusCalendar {
+				m.datePicker.SetFocus(datepicker.FocusHeaderMonth)
+			} else {
+				m.datePicker, cmd = m.datePicker.Update(msg)
+			}
+		case "shift+tab":
+			if m.datePicker.Focused == datepicker.FocusHeaderMonth {
+				m.datePicker.SetFocus(datepicker.FocusCalendar)
+			} else {
+				m.datePicker, cmd = m.datePicker.Update(msg)
+			}
+		default:
+			m.datePicker, cmd = m.datePicker.Update(msg)
+		}
+	}
+
+	if m.datePicker.Time != prev {
+		switch m.fieldIndex {
+		case dateIndex:
+			m.date = m.datePicker.Time
+		case doaIndex:
+			m.dateOfAdmission = m.datePicker.Time
+		case dobIndex:
+			m.dateOfBirth = m.datePicker.Time
+		}
+	}
+
+	return m, cmd
 }
 
 func (m *FormPageModel) handleFormInput(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -145,9 +257,9 @@ func (m *FormPageModel) handleFormInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *FormPageModel) handleNumDaysInput(key string) (tea.Model, tea.Cmd) {
 	switch key {
-	case "up":
+	case "right":
 		m.numDays++
-	case "down":
+	case "left":
 		m.numDays--
 		if m.numDays < 1 {
 			m.numDays = 1
@@ -157,60 +269,15 @@ func (m *FormPageModel) handleNumDaysInput(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *FormPageModel) handleDateInput(key string) (tea.Model, tea.Cmd) {
-	switch key {
-	case "right":
-		m.dateInteractionIndex = cyclicAdjust(m.dateInteractionIndex+1, day, year)
-	case "left":
-		m.dateInteractionIndex = cyclicAdjust(m.dateInteractionIndex-1, day, year)
-	case "up", "down":
-		m.handleDateAdjust(key)
-	}
-
-	return m, nil
-}
-
-func (m *FormPageModel) handleDateAdjust(key string) {
-	var delta int
-
-	if key == "up" {
-		delta = 1
-	} else {
-		delta = -1
-	}
-
-	switch m.fieldIndex {
-	case date:
-		m.date = adjustDate(m.date, m.dateInteractionIndex, delta)
-	case doa:
-		m.dateOfAdmission = adjustDate(m.dateOfAdmission, m.dateInteractionIndex, delta)
-	case dob:
-		m.dateOfBirth = adjustDate(m.dateOfBirth, m.dateInteractionIndex, delta)
-	}
-}
-
-func adjustDate(date time.Time, datePart int, delta int) time.Time {
-	switch datePart {
-	case day:
-		date = date.AddDate(0, 0, delta)
-	case month:
-		date = date.AddDate(0, delta, 0)
-	case year:
-		date = date.AddDate(delta, 0, 0)
-	}
-
-	return date
-}
-
 func (m *FormPageModel) handleFormNav(key string) (tea.Model, tea.Cmd) {
 	switch key {
-	case "tab":
-		m.fieldIndex = cyclicAdjust(m.fieldIndex+1, name, saveBtn)
-	case "shift+tab":
-		m.fieldIndex = cyclicAdjust(m.fieldIndex-1, name, saveBtn)
+	case "down", "tab":
+		m.fieldIndex = cyclicAdjust(m.fieldIndex+1, nameIndex, saveBtnIndex)
+	case "up", "shift+tab":
+		m.fieldIndex = cyclicAdjust(m.fieldIndex-1, nameIndex, saveBtnIndex)
 	}
 
-	if m.fieldIndex <= date || m.fieldIndex == saveBtn {
+	if m.fieldIndex <= dateIndex || m.fieldIndex == saveBtnIndex {
 		cmd := m.updateFocus()
 		return m, cmd
 	}
@@ -225,11 +292,11 @@ func (m *FormPageModel) updateFocus() tea.Cmd {
 	var cmd tea.Cmd
 
 	switch m.fieldIndex {
-	case name:
+	case nameIndex:
 		cmd = m.nameInput.Focus()
-	case address:
+	case addressIndex:
 		cmd = m.addressInput.Focus()
-	case diagnosis:
+	case diagnosisIndex:
 		cmd = m.diagnosisInput.Focus()
 	}
 
@@ -246,12 +313,34 @@ func cyclicAdjust(val, min, max int) int {
 	return val
 }
 
+func (m *FormPageModel) renderGenderField() string {
+	if m.fieldIndex == genderIndex {
+		return lipgloss.JoinHorizontal(
+			lipgloss.Center,
+			tui.FieldNameActiveStyle.Render("> GENDER"),
+			tui.SimpleFieldActiveStyle.Render(string(m.gender)),
+		)
+	}
+	return lipgloss.JoinHorizontal(
+		lipgloss.Center,
+		tui.FieldNameInactiveStyle.Render("  GENDER"),
+		tui.SimpleFieldInactiveStyle.Render(string(m.gender)),
+	)
+}
+
+func (m *FormPageModel) renderDatePicker() string {
+	if !m.datePickerMode {
+		return ""
+	}
+	return tui.DatePickerStyle.Render(m.datePicker.View())
+}
+
 func (m *FormPageModel) renderTextInputs() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		makeTextField("NAME", m.nameInput.View(), m.fieldIndex == name),
-		makeTextField("ADDRESS", m.addressInput.View(), m.fieldIndex == address),
-		makeTextField("DIAGNOSIS", m.diagnosisInput.View(), m.fieldIndex == diagnosis),
+		makeTextField("NAME", m.nameInput.View(), m.fieldIndex == nameIndex),
+		makeTextField("ADDRESS", m.addressInput.View(), m.fieldIndex == addressIndex),
+		makeTextField("DIAGNOSIS", m.diagnosisInput.View(), m.fieldIndex == diagnosisIndex),
 	)
 }
 
@@ -265,6 +354,7 @@ func makeTextField(fieldName, inputView string, active bool) string {
 	if !active {
 		fieldInputStyle = tui.InputInactiveBorderStyle
 	}
+
 	return lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		fieldNameStyle.Render(fieldName),
@@ -275,77 +365,59 @@ func makeTextField(fieldName, inputView string, active bool) string {
 func (m *FormPageModel) renderDateInputs() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		m.renderDateField("DATE", m.date, date),
-		m.renderDateField("DOA", m.dateOfAdmission, doa),
-		m.renderDateField("DOB", m.dateOfBirth, dob),
+		m.renderDateField("DATE", m.date, dateIndex),
+		m.renderDateField("DOA", m.dateOfAdmission, doaIndex),
+		m.renderDateField("DOB", m.dateOfBirth, dobIndex),
 	)
 }
 
 func (m *FormPageModel) renderDateField(fieldName string, date time.Time, index int) string {
-	if index == m.fieldIndex {
-		return makeActiveDateField(fieldName, date, m.dateInteractionIndex)
+	prefix := "  "
+	if m.fieldIndex == index {
+		prefix = "> "
 	}
-	return makeInactiveDateField(fieldName, date)
+
+	return makeDateField(prefix+fieldName, date, index == m.fieldIndex)
 }
 
-func makeActiveDateField(fieldName string, date time.Time, dateInteractionIndex int) string {
-	var indicators string
-	switch dateInteractionIndex {
-	case day:
-		indicators = "^^"
-	case month:
-		indicators = "   ^^"
-	case year:
-		indicators = "      ^^^^"
+func makeDateField(fieldName string, date time.Time, active bool) string {
+	fieldNameStyle := tui.FieldNameActiveStyle
+	if !active {
+		fieldNameStyle = tui.FieldNameInactiveStyle
+	}
+
+	dateStyle := tui.DateFieldActiveStyle
+	if !active {
+		dateStyle = tui.DateFieldInactiveStyle
 	}
 
 	dateLine := lipgloss.JoinHorizontal(
 		lipgloss.Center,
-		tui.FieldNameActiveStyle.Render(fieldName),
-		tui.DateFieldActiveStyle.Render(date.Format(config.DateFormat)),
-	)
-
-	interactionLine := lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		tui.FieldNameActiveStyle.Render(""),
-		tui.DateIndicatorStyle.Render(indicators),
-	)
-
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		dateLine,
-		interactionLine,
-	)
-}
-
-func makeInactiveDateField(fieldName string, date time.Time) string {
-	dateLine := lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		tui.FieldNameInactiveStyle.Render(fieldName),
-		tui.DateFieldInactiveStyle.Render(date.Format(config.DateFormat)),
+		fieldNameStyle.Render(fieldName),
+		dateStyle.Render(date.Format(config.DateFormat)),
 	)
 
 	return dateLine + "\n"
 }
 
 func (m *FormPageModel) renderNumDaysField() string {
-	if m.fieldIndex == numDays {
+	if m.fieldIndex == numDaysIndex {
 		return lipgloss.JoinHorizontal(
 			lipgloss.Center,
 			tui.FieldNameActiveStyle.Render("> DAYS"),
-			tui.NumDaysFieldActiveStyle.Render(strconv.Itoa(m.numDays)),
+			tui.SimpleFieldActiveStyle.Render(strconv.Itoa(m.numDays)),
 		)
 	}
 	return lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		tui.FieldNameInactiveStyle.Render("  DAYS"),
-		tui.NumDaysFieldInactiveStyle.Render(strconv.Itoa(m.numDays)),
+		tui.SimpleFieldInactiveStyle.Render(strconv.Itoa(m.numDays)),
 	)
 }
 
 func (m *FormPageModel) renderButtons() string {
-	printBtn := m.renderButton("PRINT", printBtn)
-	saveBtn := m.renderButton("SAVE", saveBtn)
+	printBtn := m.renderButton("PRINT", printBtnIndex)
+	saveBtn := m.renderButton("SAVE", saveBtnIndex)
 
 	return lipgloss.NewStyle().
 		MarginLeft(6).

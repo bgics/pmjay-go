@@ -3,8 +3,9 @@ package tui
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	InactiveColor = lipgloss.Color("240")
-	ErrorColor    = lipgloss.Color("202")
+	InactiveColor            = lipgloss.Color("240")
+	ErrorColor               = lipgloss.Color("202")
+	DatePickerHighlightColor = lipgloss.Color("208")
 
 	BorderStyle = lipgloss.NormalBorder()
 )
@@ -28,9 +29,6 @@ var (
 	FieldNameInactiveStyle = FieldNameActiveStyle.
 				Foreground(InactiveColor)
 
-	DateIndicatorStyle = lipgloss.NewStyle().
-				PaddingLeft(1)
-
 	DateFieldActiveStyle = lipgloss.NewStyle().
 				PaddingLeft(1).
 				MarginTop(1)
@@ -38,11 +36,11 @@ var (
 	DateFieldInactiveStyle = DateFieldActiveStyle.
 				Foreground(InactiveColor)
 
-	NumDaysFieldActiveStyle = lipgloss.NewStyle().
+	SimpleFieldActiveStyle = lipgloss.NewStyle().
 				Margin(1).
 				MarginTop(1)
 
-	NumDaysFieldInactiveStyle = NumDaysFieldActiveStyle.
+	SimpleFieldInactiveStyle = SimpleFieldActiveStyle.
 					Foreground(InactiveColor)
 
 	BtnActiveStyle = lipgloss.NewStyle().
@@ -54,6 +52,12 @@ var (
 	BtnInactiveStyle = BtnActiveStyle.
 				Foreground(InactiveColor).
 				BorderForeground(InactiveColor)
+
+	DatePickerStyle = lipgloss.NewStyle().
+			Border(BorderStyle).
+			BorderForeground(lipgloss.NoColor{}).
+			Padding(0, 2).
+			MarginLeft(5)
 
 	ErrStyle = lipgloss.NewStyle().
 			Foreground(ErrorColor).

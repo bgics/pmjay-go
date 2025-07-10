@@ -26,6 +26,8 @@ const (
 
 	ExeName    = ".\\PDFtoPrinter.exe"
 	DateFormat = "02/01/2006"
+
+	GenderStrLen = 3
 )
 
 var FieldConfig = map[FieldName]struct {
@@ -33,7 +35,7 @@ var FieldConfig = map[FieldName]struct {
 	Y        float64
 	MaxChars int
 }{
-	NAME:              {25.24, 44.53, 41},
+	NAME:              {25.24, 44.53, 41 - GenderStrLen},
 	ADDRESS1:          {30.10, 53.54, 39},
 	ADDRESS2:          {12.43, 62.55, 47},
 	ADDRESS3:          {12.43, 71.56, 47},

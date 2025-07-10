@@ -61,7 +61,7 @@ func convertToTextLines(fd model.FormData) ([]textLine, error) {
 	}
 
 	output := []textLine{
-		makeTextFieldTextLine(fd.Name, config.NAME),
+		makeNameTextLine(fd.Name, fd.Gender),
 		makeTextFieldTextLine(fd.Diagnosis, config.DIAGNOSIS),
 		makeDateTextLine(fd.Date, config.DATE),
 		makeDateTextLine(fd.DateOfBirth, config.DATE_OF_BIRTH),
@@ -73,6 +73,25 @@ func convertToTextLines(fd model.FormData) ([]textLine, error) {
 	output = append(output, makeAddressTextLines(fd.Address)...)
 
 	return output, nil
+}
+
+func makeNameTextLine(name string, gender model.Gender) textLine {
+	cfg := config.FieldConfig[config.NAME]
+
+	remainingChars := cfg.MaxChars - len(name)
+
+	var text string
+	if remainingChars > 0 {
+		text = trim(name+strings.Repeat(" ", remainingChars), cfg.MaxChars) + "(" + string(gender) + ")"
+	} else {
+		text = trim(name, cfg.MaxChars) + "(" + string(gender) + ")"
+	}
+
+	return textLine{
+		text: text,
+		x:    cfg.X,
+		y:    cfg.Y,
+	}
 }
 
 func makeTextFieldTextLine(fieldString string, cfgKey config.FieldName) textLine {

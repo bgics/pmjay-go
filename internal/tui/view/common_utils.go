@@ -1,9 +1,13 @@
 package view
 
 import (
+	"time"
+
 	"github.com/bgics/pmjay-go/config"
+	"github.com/bgics/pmjay-go/internal/tui"
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
+	datepicker "github.com/ethanefung/bubble-datepicker"
 )
 
 const (
@@ -27,4 +31,16 @@ func makeTextInput(focus bool, cfgKeys ...config.FieldName) textinput.Model {
 	t.CharLimit = maxChars
 
 	return t
+}
+
+func makeDateInput() datepicker.Model {
+	d := datepicker.New(time.Now())
+	defaultStyle := datepicker.DefaultStyles()
+
+	defaultStyle.FocusedText = defaultStyle.FocusedText.
+		Foreground(tui.DatePickerHighlightColor)
+
+	d.Styles = defaultStyle
+
+	return d
 }
