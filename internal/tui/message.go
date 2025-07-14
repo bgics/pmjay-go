@@ -18,6 +18,10 @@ type FatalErrorMsg struct {
 	Err error
 }
 
+type ErrorMsg struct {
+	Err error
+}
+
 func ChangePageCmd(to PageIndex) tea.Cmd {
 	return func() tea.Msg {
 		return ChangePageMsg{
@@ -29,6 +33,14 @@ func ChangePageCmd(to PageIndex) tea.Cmd {
 func FatalErrorCmd(err error) tea.Cmd {
 	return func() tea.Msg {
 		return FatalErrorMsg{
+			Err: err,
+		}
+	}
+}
+
+func ErrorCmd(err error) tea.Cmd {
+	return func() tea.Msg {
+		return ErrorMsg{
 			Err: err,
 		}
 	}

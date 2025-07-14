@@ -27,6 +27,8 @@ const (
 	ExeName    = ".\\PDFtoPrinter.exe"
 	DateFormat = "02/01/2006"
 
+	OutputFileName = "output.pdf"
+
 	GenderStrLen = 3
 )
 

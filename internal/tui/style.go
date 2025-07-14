@@ -22,7 +22,7 @@ var (
 					BorderForeground(InactiveColor)
 
 	FieldNameActiveStyle = lipgloss.NewStyle().
-				Width(14).
+				Width(12).
 				MarginRight(1).
 				AlignHorizontal(lipgloss.Right)
 

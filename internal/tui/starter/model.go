@@ -36,6 +36,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tui.FatalErrorMsg:
 		m.ExitError = msg.Err
 		return m, tea.Quit
+	case tui.ErrorMsg:
+		m.sharedState.Error = msg.Err
+		return m, nil
 	case tui.ChangePageMsg:
 		if err := m.changePage(msg.To); err != nil {
 			return m, tui.FatalErrorCmd(err)
@@ -57,6 +60,7 @@ func (m *Model) View() string {
 }
 
 func (m *Model) changePage(to tui.PageIndex) error {
+	m.sharedState.Error = nil
 	switch to {
 	case tui.START_PAGE:
 		m.currentModel = view.NewStartPageModel(m.sharedState)

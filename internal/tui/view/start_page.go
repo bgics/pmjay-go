@@ -1,10 +1,11 @@
 package view
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/bgics/pmjay-go/internal/tui"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 var (
@@ -32,9 +33,9 @@ func (m *StartPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "up", "shift+tab":
-			m.decrementChoiceIndex()
+			m.choiceIndex = cyclicAdjust(m.choiceIndex-1, 0, len(choices)-1)
 		case "down", "tab":
-			m.incrementChoiceIndex()
+			m.choiceIndex = cyclicAdjust(m.choiceIndex+1, 0, len(choices)-1)
 		case "enter":
 			switch m.choiceIndex {
 			case 0:
@@ -50,34 +51,26 @@ func (m *StartPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *StartPageModel) incrementChoiceIndex() {
-	m.choiceIndex++
-
-	if m.choiceIndex > len(choices)-1 {
-		m.choiceIndex = 0
-	}
-}
-
-func (m *StartPageModel) decrementChoiceIndex() {
-	m.choiceIndex--
-
-	if m.choiceIndex < 0 {
-		m.choiceIndex = len(choices) - 1
-	}
-}
-
 func (m *StartPageModel) View() string {
-	var output strings.Builder
-
-	output.WriteString("\n\n")
-
+	rows := make([]string, len(choices)+1)
 	for i, choice := range choices {
+		style := lipgloss.NewStyle().MarginTop(2)
 		if i == m.choiceIndex {
-			output.WriteString("  > " + choice + "\n\n")
+			rows[i] = style.Render("> " + choice)
 		} else {
-			output.WriteString("    " + choice + "\n\n")
+			rows[i] = style.Render("  " + choice)
 		}
 	}
 
-	return output.String()
+	if err := m.sharedState.Error; err != nil {
+		rows[len(choices)] = tui.ErrStyle.Render(fmt.Sprintf("[ERROR] %v", err))
+	}
+
+	return lipgloss.NewStyle().
+		Margin(0, 2).
+		Render(lipgloss.JoinVertical(
+			lipgloss.Left,
+			rows...,
+		))
+
 }

@@ -9,6 +9,7 @@ type SharedState struct {
 	SelectedRecord model.FormData
 	LastPageIndex  PageIndex
 	Store          *store.Store
+	Error          error
 }
 
 func NewSharedState() *SharedState {

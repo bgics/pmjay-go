@@ -1,13 +1,14 @@
 package view
 
 import (
+	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/bgics/pmjay-go/config"
 	"github.com/bgics/pmjay-go/internal/tui"
 	"github.com/bgics/pmjay-go/model"
+	"github.com/bgics/pmjay-go/pdf"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -44,8 +45,6 @@ type FormPageModel struct {
 	datePicker     datepicker.Model
 	datePickerMode bool
 
-	// TODO: make error a field in shared state and then show error at bottom on each page
-	errMsg      string
 	sharedState *tui.SharedState
 }
 
@@ -130,6 +129,40 @@ func (m *FormPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 
 				return m, nil
+			} else if m.fieldIndex == printBtnIndex {
+				fd, err := m.validateInput()
+				if err != nil {
+					return m, tui.ErrorCmd(err)
+				}
+
+				cmd := func() tea.Msg {
+					err := pdf.GeneratePDF(config.OutputFileName, fd, m.numDays)
+					if err != nil {
+						return tui.ErrorMsg{Err: err}
+					}
+
+					err = pdf.PrintPDF(config.OutputFileName)
+					if err != nil {
+						return tui.ErrorMsg{Err: err}
+					}
+
+					return nil
+				}
+
+				m.sharedState.LastPageIndex = tui.FORM_PAGE
+				return m, tea.Batch(cmd, tui.ChangePageCmd(tui.START_PAGE))
+			} else if m.fieldIndex == saveBtnIndex {
+				fd, err := m.validateInput()
+				if err != nil {
+					return m, tui.ErrorCmd(err)
+				}
+
+				if err := m.sharedState.Store.AddRecord(fd); err != nil {
+					return m, tui.ErrorCmd(err)
+				}
+
+				m.sharedState.LastPageIndex = tui.FORM_PAGE
+				return m, tui.ChangePageCmd(tui.START_PAGE)
 			}
 		}
 	}
@@ -138,10 +171,6 @@ func (m *FormPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *FormPageModel) View() string {
-	var output strings.Builder
-
-	output.WriteString("\n")
-
 	inputFields := m.renderTextInputs()
 
 	dateFields := m.renderDateInputs()
@@ -167,14 +196,48 @@ func (m *FormPageModel) View() string {
 		datePicker,
 	)
 
-	output.WriteString(lipgloss.JoinVertical(
-		lipgloss.Left,
-		inputFields,
-		bottomForm,
-		errorMsg,
-	))
+	return lipgloss.NewStyle().
+		MarginTop(2).
+		Render(
+			lipgloss.JoinVertical(
+				lipgloss.Left,
+				inputFields,
+				bottomForm,
+				errorMsg,
+			),
+		)
+}
 
-	return output.String()
+func (m *FormPageModel) validateInput() (model.FormData, error) {
+	if m.nameInput.Value() == "" {
+		return model.FormData{}, fmt.Errorf("name field is empty")
+	}
+	if m.addressInput.Value() == "" {
+		return model.FormData{}, fmt.Errorf("address field is empty")
+	}
+	if m.diagnosisInput.Value() == "" {
+		return model.FormData{}, fmt.Errorf("diagnosis field is empty")
+	}
+
+	if m.date.Compare(m.dateOfAdmission) < 0 {
+		return model.FormData{}, fmt.Errorf("doa is after date")
+	}
+	if m.date.Compare(m.dateOfBirth) < 0 {
+		return model.FormData{}, fmt.Errorf("dob is after date")
+	}
+	if m.dateOfAdmission.Compare(m.dateOfBirth) < 0 {
+		return model.FormData{}, fmt.Errorf("dob is after doa")
+	}
+
+	return model.FormData{
+		Name:            m.nameInput.Value(),
+		Address:         m.addressInput.Value(),
+		Diagnosis:       m.diagnosisInput.Value(),
+		Gender:          m.gender,
+		Date:            m.date,
+		DateOfAdmission: m.dateOfAdmission,
+		DateOfBirth:     m.dateOfBirth,
+	}, nil
 }
 
 func (m *FormPageModel) handleGenderInput() (tea.Model, tea.Cmd) {
@@ -438,8 +501,8 @@ func (m *FormPageModel) renderButton(btnName string, index int) string {
 }
 
 func (m *FormPageModel) renderError() string {
-	if len(m.errMsg) > 0 {
-		return tui.ErrStyle.Render("[ERROR]: " + m.errMsg)
+	if err := m.sharedState.Error; err != nil {
+		return tui.ErrStyle.Render(fmt.Sprintf("[ERROR] %v", err))
 	}
 	return ""
 }

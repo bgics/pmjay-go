@@ -1,6 +1,7 @@
 package view
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/bgics/pmjay-go/config"
@@ -36,9 +37,9 @@ func (m *SearchPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "up", "shift+tab":
-			m.recordIndex--
+			m.recordIndex = cyclicAdjust(m.recordIndex-1, 0, max(len(m.searchResults)-1, 0))
 		case "down", "tab":
-			m.recordIndex++
+			m.recordIndex = cyclicAdjust(m.recordIndex+1, 0, max(len(m.searchResults)-1, 0))
 		case "enter":
 			if len(m.searchResults) > 0 {
 				m.sharedState.SelectedRecord = m.searchResults[m.recordIndex]
@@ -51,16 +52,6 @@ func (m *SearchPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if len(m.searchResults) > 0 {
-		if m.recordIndex > len(m.searchResults)-1 {
-			m.recordIndex = 0
-		} else if m.recordIndex < 0 {
-			m.recordIndex = len(m.searchResults) - 1
-		}
-	} else {
-		m.recordIndex = 0
-	}
-
 	var cmd tea.Cmd
 	m.searchInput, cmd = m.searchInput.Update(msg)
 
@@ -68,7 +59,7 @@ func (m *SearchPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if len(searchValue) > 0 {
 		results, err := m.sharedState.Store.GetRecordsByName(searchValue)
 		if err != nil {
-			// TODO: implement the global error in shared state and then add error there
+			return m, tui.ErrorCmd(err)
 		} else {
 			m.searchResults = results
 		}
@@ -110,6 +101,11 @@ func (m *SearchPageModel) View() string {
 		),
 	)
 
+	var errMsg string
+	if err := m.sharedState.Error; err != nil {
+		errMsg = tui.ErrStyle.Render(fmt.Sprintf("[ERROR] %v", err))
+	}
+
 	output.WriteString(
 		lipgloss.NewStyle().
 			MarginLeft(3).
@@ -118,6 +114,7 @@ func (m *SearchPageModel) View() string {
 					lipgloss.Left,
 					searchInput,
 					searchResults,
+					errMsg,
 				),
 			),
 	)
