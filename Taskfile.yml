@@ -1,0 +1,12 @@
+version: '3'
+
+tasks:
+  build:
+    cmds:
+      - rsrc -ico ./assets/app_icon.ico
+      - go build -o pmjay.exe
+      - powershell Compress-Archive -Path "./rsrc_windows_amd64.syso", "./assets", "./pmjay.exe" -DestinationPath "./pmjay.zip"
+  clean:
+    cmds:
+      - powershell Remove-Item -Force *.exe, *.syso, *.pdf, *.zip
+    
