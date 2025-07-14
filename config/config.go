@@ -57,6 +57,6 @@ var FontConfig = struct {
 }{
 	"JetBrainsMono",
 	"",
-	"JetBrainsMono-Regular.json",
+	"JetBrainsMono-Bold.json",
 	11,
 }

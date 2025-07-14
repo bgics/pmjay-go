@@ -135,34 +135,21 @@ func (m *FormPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tui.ErrorCmd(err)
 				}
 
-				cmd := func() tea.Msg {
-					err := pdf.GeneratePDF(config.OutputFileName, fd, m.numDays)
-					if err != nil {
-						return tui.ErrorMsg{Err: err}
-					}
-
-					err = pdf.PrintPDF(config.OutputFileName)
-					if err != nil {
-						return tui.ErrorMsg{Err: err}
-					}
-
-					return nil
-				}
+				printCmd := m.generatePrintCmd(fd)
+				saveCmd := m.generateSaveCmd(fd)
 
 				m.sharedState.LastPageIndex = tui.FORM_PAGE
-				return m, tea.Batch(cmd, tui.ChangePageCmd(tui.START_PAGE))
+				return m, tea.Batch(printCmd, saveCmd, tui.ChangePageCmd(tui.START_PAGE))
 			} else if m.fieldIndex == saveBtnIndex {
 				fd, err := m.validateInput()
 				if err != nil {
 					return m, tui.ErrorCmd(err)
 				}
 
-				if err := m.sharedState.Store.AddRecord(fd); err != nil {
-					return m, tui.ErrorCmd(err)
-				}
+				saveCmd := m.generateSaveCmd(fd)
 
 				m.sharedState.LastPageIndex = tui.FORM_PAGE
-				return m, tui.ChangePageCmd(tui.START_PAGE)
+				return m, tea.Batch(saveCmd, tui.ChangePageCmd(tui.START_PAGE))
 			}
 		}
 	}
@@ -206,6 +193,31 @@ func (m *FormPageModel) View() string {
 				errorMsg,
 			),
 		)
+}
+
+func (m *FormPageModel) generatePrintCmd(fd model.FormData) tea.Cmd {
+	return func() tea.Msg {
+		err := pdf.GeneratePDF(config.OutputFileName, fd, m.numDays)
+		if err != nil {
+			return tui.ErrorMsg{Err: err}
+		}
+
+		err = pdf.PrintPDF(config.OutputFileName)
+		if err != nil {
+			return tui.ErrorMsg{Err: err}
+		}
+
+		return nil
+	}
+}
+
+func (m *FormPageModel) generateSaveCmd(fd model.FormData) tea.Cmd {
+	return func() tea.Msg {
+		if err := m.sharedState.Store.AddRecord(fd); err != nil {
+			return tui.ErrorCmd(err)
+		}
+		return nil
+	}
 }
 
 func (m *FormPageModel) validateInput() (model.FormData, error) {
