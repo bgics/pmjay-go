@@ -46,6 +46,10 @@ func (m *SearchPageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.sharedState.LastPageIndex = tui.SEARCH_PAGE
 				return m, tui.ChangePageCmd(tui.FORM_PAGE)
 			}
+
+			return m, nil
+		case "delete":
+			return m.handleRemoveRecord()
 		case "esc":
 			m.sharedState.LastPageIndex = tui.SEARCH_PAGE
 			return m, tui.ChangePageCmd(tui.START_PAGE)
@@ -120,4 +124,23 @@ func (m *SearchPageModel) View() string {
 	)
 
 	return output.String()
+}
+
+func (m *SearchPageModel) handleRemoveRecord() (tea.Model, tea.Cmd) {
+	recordName := m.searchResults[m.recordIndex].Name
+
+	if len(m.searchResults) > 0 {
+		if err := m.sharedState.Store.RemoveRecord(recordName); err != nil {
+			return m, tui.ErrorCmd(err)
+		}
+
+		m.searchResults = append(m.searchResults[:m.recordIndex], m.searchResults[m.recordIndex+1:]...)
+
+		m.recordIndex--
+		if m.recordIndex < 0 {
+			m.recordIndex = 0
+		}
+	}
+
+	return m, nil
 }

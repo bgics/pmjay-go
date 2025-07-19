@@ -68,6 +68,29 @@ func (s *Store) AddRecord(fd model.FormData) error {
 	return nil
 }
 
+func (s *Store) RemoveRecord(name string) error {
+	if !s.isValid {
+		if err := s.loadRecords(); err != nil {
+			return fmt.Errorf("cannot load records: %w", err)
+		}
+	}
+
+	index := s.getRecordIndex(name)
+
+	if index == -1 {
+		return fmt.Errorf("name not found")
+	}
+
+	s.records = append(s.records[:index], s.records[index+1:]...)
+
+	if err := s.storeRecords(); err != nil {
+		s.isValid = false
+		return fmt.Errorf("cannot save records: %w", err)
+	}
+
+	return nil
+}
+
 func (s *Store) GetRecordsByName(name string) ([]model.FormData, error) {
 	if !s.isValid {
 		if err := s.loadRecords(); err != nil {
