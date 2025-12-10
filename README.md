@@ -1,80 +1,64 @@
 # PMJAY-Go 🏥
 
-A terminal-based CLI tool designed to streamline daily reporting for PMJAY (Pradhan Mantri Jan Arogya Yojana) scheme patients.
+A simple CLI tool I made to help my dad with his daily patient reporting.
 
-## About
+## Why I Built This
 
-This tool was created to help doctors manage the tedious task of filling out daily patient reports under the PMJAY scheme. Instead of manually filling forms for each patient every day, enter the patient details once and let the tool automatically generate forms for all required days.
+My dad is a doctor who treats patients under the PMJAY (Pradhan Mantri Jan Arogya Yojana) scheme. Every day, he had to fill out the same patient information forms repeatedly for each patient's daily report. It was tedious and time-consuming.
 
-### Key Features
+So I built this tool for him - you enter a patient's details once, tell it how many days you need reports for, and it generates all the forms automatically. It also saves patient information so you can quickly look up previous patients without retyping everything.
 
-- **📝 Quick Patient Entry**: Input patient information through an intuitive terminal interface
-- **🔍 Patient Search**: Search and retrieve previously entered patient records
-- **📄 Automated PDF Generation**: Automatically generates daily report forms for multiple days
-- **💾 Patient Data Storage**: Stores patient entries in CSV format for easy access
-- **🖨️ Direct Printing**: Integrates with PDFtoPrinter for seamless printing
+## What It Does
 
-## Prerequisites
+- Enter patient information once through a simple terminal interface
+- Automatically generates PDF forms for multiple days
+- Saves patient records locally (CSV file) so you can search and reuse them
+- Can print the generated PDFs directly (if you have PDFtoPrinter.exe)
 
-- **Go 1.24.4** or later
-- **Task** - Task runner (install from [taskfile.dev](https://taskfile.dev/))
-- **PDFtoPrinter.exe** - For printing functionality (Windows)
-- **Windows OS** - This tool is designed exclusively for Windows
+## Requirements
 
-## Installation
+- Go 1.24.4 or later (to build from source)
+- Task runner (from [taskfile.dev](https://taskfile.dev/))
+- PDFtoPrinter.exe (optional, for printing)
+- Windows (this only works on Windows)
 
-1. Clone the repository:
+## How to Build
+
+1. Clone this repo:
 ```bash
 git clone https://github.com/bgics/pmjay-go.git
 cd pmjay-go
 ```
 
-2. Install Go dependencies:
+2. Download dependencies:
 ```bash
 go mod download
 ```
 
-3. Place `PDFtoPrinter.exe` in the project root directory (for printing support)
+3. (Optional) Put `PDFtoPrinter.exe` in the project folder if you want to print directly
 
-## Building
-
-Build the application using Task:
-
+4. Build it:
 ```bash
 task build
 ```
 
-This will:
-- Embed the application icon
-- Compile the executable (`pmjay.exe`)
-- Create a distributable ZIP package with all necessary assets
+This creates `pmjay.exe` and packages everything into a ZIP file.
 
-To clean build artifacts:
+To clean up build files:
 ```bash
 task clean
 ```
 
-## Usage
+## How to Use
 
-Run the application:
+Just run `pmjay.exe` and follow the prompts:
 
-```bash
-./pmjay.exe
-```
+1. Choose "New Patient" to enter someone new, or "Search Records" to find a previous patient
+2. Fill in the patient details (name, address, dates, diagnosis, etc.)
+3. Enter how many days you need reports for
+4. The tool generates a PDF with all the daily forms
 
-### Workflow
-
-1. **Start Screen**: Choose between "New Patient" or "Search Records"
-2. **New Patient**: Fill in patient details including:
-   - Name
-   - Address
-   - Date of Birth
-   - Date of Admission
-   - Diagnosis
-   - Gender
-   - Number of days for report generation
-3. **Search Records**: Look up previously entered patients by name
-4. **PDF Generation**: Forms are automatically generated and can be printed directly
+The patient info gets saved automatically, so next time you can search for them by name instead of typing everything again.
 
 ## Project Structure
 
@@ -89,24 +73,21 @@ pmjay-go/
 └── main.go           # Application entry point
 ```
 
-## Technologies Used
+## Tech Stack
 
-- **[Bubble Tea](https://github.com/charmbracelet/bubbletea)** - Terminal UI framework
-- **[Lip Gloss](https://github.com/charmbracelet/lipgloss)** - Terminal styling
-- **[gofpdf](https://github.com/phpdave11/gofpdf)** - PDF generation
-- **[Task](https://taskfile.dev/)** - Modern task runner
+Built with:
+- [Bubble Tea](https://github.com/charmbracelet/bubbletea) - for the terminal UI
+- [Lip Gloss](https://github.com/charmbracelet/lipgloss) - for styling
+- [gofpdf](https://github.com/phpdave11/gofpdf) - for generating PDFs
+- [Task](https://taskfile.dev/) - for build automation
 
 ## License
 
-This project is a personal tool created to help streamline medical documentation workflow.
+This is a personal project I made for my dad. Feel free to use it if you find it helpful.
 
-## Notes
+## A Few Notes
 
-- Patient records are stored locally in CSV format
-- The tool maintains up to 10 recent patient records for quick access
-- PDF output file is named `output.pdf` by default
-- Form template and fonts are bundled in the `assets` directory
-
----
-
-*Made with ❤️ to make daily medical reporting easier*
+- Patient data is saved in a CSV file locally
+- It keeps the last 10 patients for quick search
+- Generated PDF is saved as `output.pdf`
+- The form template and fonts are in the `assets` folder
