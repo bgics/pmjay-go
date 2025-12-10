@@ -15,14 +15,27 @@ So I built this tool for him - you enter a patient's details once, tell it how m
 - Saves patient records locally (CSV file) so you can search and reuse them
 - Can print the generated PDFs directly (if you have PDFtoPrinter.exe)
 
-## Requirements
+## Quick Start (Pre-built)
 
-- Go 1.24.4 or later (to build from source)
+If you just want to use the tool without building from source:
+
+1. Download the latest `.zip` file from the [Releases](https://github.com/bgics/pmjay-go/releases) page
+2. Extract it anywhere on your computer
+3. (Optional) If you want printing support, put `PDFtoPrinter.exe` in the same folder as `pmjay.exe`
+4. Run `pmjay.exe`
+
+## Building from Source
+
+If you want to build it yourself:
+
+### Requirements
+
+- Go 1.24.4 or later
 - Task runner (from [taskfile.dev](https://taskfile.dev/))
 - PDFtoPrinter.exe (optional, for printing)
 - Windows (this only works on Windows)
 
-## How to Build
+### Build Steps
 
 1. Clone this repo:
 ```bash
@@ -35,7 +48,7 @@ cd pmjay-go
 go mod download
 ```
 
-3. (Optional) Put `PDFtoPrinter.exe` in the project folder if you want to print directly
+3. (Optional) Put `PDFtoPrinter.exe` in the project folder (same directory as the .exe) if you want to print directly
 
 4. Build it:
 ```bash
