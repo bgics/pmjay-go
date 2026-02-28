@@ -52,8 +52,8 @@ func (s *Store) AddRecord(fd model.FormData) error {
 	if index != -1 {
 		s.records[index] = fd
 	} else {
-		if len(s.records) >= 10 {
-			s.records = s.records[:9]
+		if len(s.records) >= config.MaxRecords {
+			s.records = s.records[:config.MaxRecords-1]
 		}
 
 		s.records = append(s.records, fd)

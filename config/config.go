@@ -29,7 +29,9 @@ const (
 
 	OutputFileName = "output.pdf"
 
-	GenderStrLen = 3
+	GenderStrLen =  3
+
+	MaxRecords = 50
 )
 
 var FieldConfig = map[FieldName]struct {
